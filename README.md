@@ -66,8 +66,44 @@ If you only built the release binary, you can either:
 
 ## Configuration
 
+### Getting Your Credentials
+
+Before setting up cfkv, you'll need three pieces of information from Cloudflare:
+
+#### 1. API Token
+1. Go to https://dash.cloudflare.com/
+2. Click your profile icon → **My Profile**
+3. Go to **API Tokens** tab
+4. Click **Create Token** (use "Edit zone DNS" template or create custom)
+5. Copy the token value
+
+#### 2. Account ID
+1. Go to https://dash.cloudflare.com/
+2. The URL shows: `https://dash.cloudflare.com/YOUR_ACCOUNT_ID`
+3. Copy the ID from the URL
+
+Or via API:
+```bash
+curl -X GET "https://api.cloudflare.com/client/v4/accounts" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json"
+```
+
+#### 3. Namespace ID (KV Namespace)
+1. Go to https://dash.cloudflare.com/
+2. Click **Workers & Pages** → **KV**
+3. Find your KV namespace and click it
+4. Copy the **Namespace ID**
+
+Or check your `wrangler.toml`:
+```toml
+kv_namespaces = [
+  { binding = "MY_KV", id = "abc123xyz789", preview_id = "test123" }
+]
+```
+
 ### Setup
-Before using the CLI, configure your Cloudflare credentials:
+Once you have all three values, configure cfkv:
 
 ```bash
 cfkv config set-token <YOUR_API_TOKEN>
@@ -89,6 +125,18 @@ cfkv config show
 ### Reset Configuration
 ```bash
 cfkv config reset
+```
+
+### Environment Variables (Alternative)
+
+Instead of storing in config file, use environment variables:
+
+```bash
+export CF_API_TOKEN="your-api-token"
+export CF_ACCOUNT_ID="your-account-id"
+export CF_NAMESPACE_ID="your-namespace-id"
+
+cfkv config show
 ```
 
 ## Usage
