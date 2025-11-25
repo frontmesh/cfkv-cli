@@ -12,6 +12,7 @@ path = "src/main.rs"
 
 [dependencies]
 cloudflare-kv = { path = "../cloudflare-kv" }
+cfkv-blog = { path = "../cfkv-blog" }
 serde.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true

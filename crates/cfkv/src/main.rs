@@ -2,8 +2,9 @@ mod cli;
 mod config;
 mod formatter;
 
-use cli::{Cli, Commands, BatchCommands, ConfigCommands};
+use cli::{Cli, Commands, BatchCommands, BlogCommands, ConfigCommands};
 use cloudflare_kv::{ClientConfig, KvClient, PaginationParams};
+use cfkv_blog::BlogPublisher;
 use clap::Parser;
 use formatter::{Formatter, OutputFormat};
 use std::fs;
@@ -53,13 +54,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Validate configuration for other commands
             let account_id = config
                 .account_id
-                .ok_or("Account ID not configured. Set with: cf-kv config set-account <ID>")?;
+                .ok_or("Account ID not configured. Set with: cfkv config set-account <ID>")?;
             let namespace_id = config
                 .namespace_id
-                .ok_or("Namespace ID not configured. Set with: cf-kv config set-namespace <ID>")?;
+                .ok_or("Namespace ID not configured. Set with: cfkv config set-namespace <ID>")?;
             let api_token = config
                 .api_token
-                .ok_or("API token not configured. Set with: cf-kv config set-token <TOKEN>")?;
+                .ok_or("API token not configured. Set with: cfkv config set-token <TOKEN>")?;
 
             let client_config = ClientConfig::new(&account_id, &namespace_id, cloudflare_kv::AuthCredentials::token(api_token));
             let client = KvClient::new(client_config);
@@ -99,6 +100,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         "Interactive mode coming soon",
                         format
                     ));
+                }
+                Commands::Blog { command } => {
+                    handle_blog(&client, command, format).await?
                 }
                 Commands::Config { .. } => unreachable!(),
             }
@@ -316,6 +320,64 @@ async fn handle_config_command(
             let new_config = config::Config::default();
             new_config.save(config_path)?;
             println!("{}", Formatter::format_success("Configuration reset", format));
+        }
+    }
+
+    Ok(())
+}
+
+async fn handle_blog(
+    client: &KvClient,
+    command: BlogCommands,
+    format: OutputFormat,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let publisher = BlogPublisher::new(client);
+
+    match command {
+        BlogCommands::Publish { file } => {
+            publisher.publish_from_file(&file).await?;
+            let title = file.file_name().and_then(|n| n.to_str()).unwrap_or("blog post");
+            println!(
+                "{}",
+                Formatter::format_success(
+                    &format!("Successfully published: {}", title),
+                    format
+                )
+            );
+        }
+        BlogCommands::List => {
+            let posts = publisher.list_posts().await?;
+
+            if posts.is_empty() {
+                println!("{}", Formatter::format_text("No blog posts found", format));
+                return Ok(());
+            }
+
+            match format {
+                OutputFormat::Json => {
+                    println!("{}", serde_json::to_string_pretty(&posts)?);
+                }
+                OutputFormat::Yaml => {
+                    println!("{}", serde_yaml::to_string(&posts)?);
+                }
+                OutputFormat::Text => {
+                    println!("Found {} blog posts:\n", posts.len());
+                    for post in posts {
+                        println!("• {}", post.title);
+                        println!("  Slug: {}", post.slug);
+                        println!("  Date: {}", post.date);
+                        println!("  Author: {}", post.author);
+                        println!("  Tags: {}\n", post.tags.join(", "));
+                    }
+                }
+            }
+        }
+        BlogCommands::Delete { slug } => {
+            publisher.delete_post(&slug).await?;
+            println!(
+                "{}",
+                Formatter::format_success(&format!("Successfully deleted: {}", slug), format)
+            );
         }
     }
 
