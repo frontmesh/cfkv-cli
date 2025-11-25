@@ -64,7 +64,7 @@ impl Config {
     /// Get default config file path
     pub fn default_path() -> Result<PathBuf> {
         let config_dir = Self::config_dir()?;
-        Ok(config_dir.join("cf-kv").join("config.json"))
+        Ok(config_dir.join("cfkv").join("config.json"))
     }
 }
 

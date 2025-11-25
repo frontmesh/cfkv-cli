@@ -1,4 +1,4 @@
-//! Plugin system for cf-kv
+//! Plugin system for cfkv
 //!
 //! This module provides the core plugin interface and registry
 //! for domain-specific KV use cases.

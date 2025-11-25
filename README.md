@@ -28,6 +28,42 @@ cargo build --release
 
 The binary will be available at `target/release/cfkv` (or `cfkv.exe` on Windows).
 
+### Install Binary (Recommended)
+
+For easy access from anywhere, install the binary:
+
+```bash
+cargo install --path crates/cfkv
+```
+
+This installs `cfkv` to `~/.cargo/bin/` (which should be in your PATH if you have Rust installed).
+
+### Using the Binary Without Installation
+
+If you only built the release binary, you can either:
+
+1. **Use the full path**:
+   ```bash
+   /Users/vv/Projects/Rust/cf-kv-cli/target/release/cfkv --help
+   ```
+
+2. **Add to PATH temporarily** (in current shell):
+   ```bash
+   export PATH="/path/to/cf-kv-cli/target/release:$PATH"
+   cfkv --help
+   ```
+
+3. **Add to PATH permanently** (edit `~/.zshrc`, `~/.bashrc`, or `~/.bash_profile`):
+   ```bash
+   export PATH="/path/to/cf-kv-cli/target/release:$PATH"
+   ```
+   Then reload: `source ~/.zshrc`
+
+4. **Create a symlink**:
+   ```bash
+   sudo ln -s /path/to/cf-kv-cli/target/release/cfkv /usr/local/bin/cfkv
+   ```
+
 ## Configuration
 
 ### Setup
@@ -38,6 +74,12 @@ cfkv config set-token <YOUR_API_TOKEN>
 cfkv config set-account <YOUR_ACCOUNT_ID>
 cfkv config set-namespace <YOUR_NAMESPACE_ID>
 ```
+
+### Configuration File
+
+The configuration is stored at:
+- **macOS/Linux**: `~/.config/cfkv/config.json`
+- **Windows**: `%APPDATA%\cfkv\config.json`
 
 ### View Configuration
 ```bash
@@ -94,11 +136,57 @@ cfkv list --cursor "next_cursor_value"
 cfkv batch delete key1 key2 key3
 ```
 
+### Blog Management
+
+The blog plugin allows you to publish and manage markdown blog posts in Cloudflare KV.
+
+#### Publish a Blog Post
+```bash
+cfkv blog publish path/to/blog-post.md
+```
+
+Blog posts must be markdown files with YAML frontmatter:
+```markdown
+---
+slug: my-blog-post
+title: My Blog Post Title
+description: A short description of the post
+author: Author Name
+date: 2025-01-15
+cover_image: blog/image.jpg
+tags:
+  - rust
+  - webdev
+---
+
+# Your markdown content here
+
+This is the body of your blog post.
+```
+
+**Required fields**: slug, title, description, author, date
+- `slug`: Post URL identifier (lowercase, numbers, hyphens only)
+- `date`: Publication date in YYYY-MM-DD format
+- `cover_image`: Optional image path
+- `tags`: Optional list of tags
+
+#### List All Blog Posts
+```bash
+cfkv blog list
+cfkv blog list --format json
+cfkv blog list --format yaml
+```
+
+#### Delete a Blog Post
+```bash
+cfkv blog delete my-blog-post
+```
+
 ## Command Line Options
 
 ### Global Options
 ```
---config <PATH>          Path to config file (default: ~/.cf-kv/config.json)
+--config <PATH>          Path to config file (default: ~/.config/cfkv/config.json)
 --account-id <ID>        Cloudflare account ID (overrides config)
 --namespace-id <ID>      KV namespace ID (overrides config)
 --api-token <TOKEN>      API token (overrides config)

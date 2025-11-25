@@ -54,13 +54,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Validate configuration for other commands
             let account_id = config
                 .account_id
-                .ok_or("Account ID not configured. Set with: cf-kv config set-account <ID>")?;
+                .ok_or("Account ID not configured. Set with: cfkv config set-account <ID>")?;
             let namespace_id = config
                 .namespace_id
-                .ok_or("Namespace ID not configured. Set with: cf-kv config set-namespace <ID>")?;
+                .ok_or("Namespace ID not configured. Set with: cfkv config set-namespace <ID>")?;
             let api_token = config
                 .api_token
-                .ok_or("API token not configured. Set with: cf-kv config set-token <TOKEN>")?;
+                .ok_or("API token not configured. Set with: cfkv config set-token <TOKEN>")?;
 
             let client_config = ClientConfig::new(&account_id, &namespace_id, cloudflare_kv::AuthCredentials::token(api_token));
             let client = KvClient::new(client_config);
