@@ -1,0 +1,169 @@
+use clap::{Parser, Subcommand};
+use std::path::PathBuf;
+
+#[derive(Parser)]
+#[command(
+    name = "cfkv",
+    version = "0.1.0",
+    about = "A general-purpose CLI for Cloudflare KV",
+    long_about = "cfkv is a comprehensive CLI tool for managing Cloudflare Workers KV storage with support for interactive and scriptable operations."
+)]
+pub struct Cli {
+    /// Account ID for Cloudflare API
+    #[arg(long, env = "CF_ACCOUNT_ID")]
+    pub account_id: Option<String>,
+
+    /// Namespace ID for KV storage
+    #[arg(long, env = "CF_NAMESPACE_ID")]
+    pub namespace_id: Option<String>,
+
+    /// API token for authentication
+    #[arg(long, env = "CF_API_TOKEN")]
+    pub api_token: Option<String>,
+
+    /// Config file path
+    #[arg(long, env = "CF_KV_CONFIG")]
+    pub config: Option<PathBuf>,
+
+    /// Output format (json, yaml, text)
+    #[arg(short, long, default_value = "text")]
+    pub format: String,
+
+    /// Enable debug logging
+    #[arg(short, long)]
+    pub debug: bool,
+
+    #[command(subcommand)]
+    pub command: Commands,
+}
+
+#[derive(Subcommand)]
+pub enum Commands {
+    /// Get a value by key
+    Get {
+        key: String,
+        /// Pretty print output
+        #[arg(short, long)]
+        pretty: bool,
+    },
+
+    /// Put a value with a key
+    Put {
+        key: String,
+        /// Value to store
+        #[arg(short, long)]
+        value: Option<String>,
+        /// Read value from file
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+        /// TTL in seconds
+        #[arg(long)]
+        ttl: Option<u64>,
+        /// Metadata as JSON
+        #[arg(long)]
+        metadata: Option<String>,
+    },
+
+    /// Delete a key
+    Delete {
+        key: String,
+    },
+
+    /// List all keys
+    List {
+        /// Number of keys to return
+        #[arg(short, long, default_value = "100")]
+        limit: u32,
+        /// Pagination cursor
+        #[arg(long)]
+        cursor: Option<String>,
+        /// Include metadata
+        #[arg(long)]
+        metadata: bool,
+    },
+
+    /// Batch operations
+    Batch {
+        #[command(subcommand)]
+        command: BatchCommands,
+    },
+
+    /// Namespace management
+    Namespace {
+        #[command(subcommand)]
+        command: NamespaceCommands,
+    },
+
+    /// Interactive mode
+    Interactive,
+
+    /// Configure authentication
+    Config {
+        #[command(subcommand)]
+        command: ConfigCommands,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum BatchCommands {
+    /// Delete multiple keys
+    Delete {
+        /// Keys to delete
+        keys: Vec<String>,
+    },
+
+    /// Put multiple key-value pairs from JSON/YAML file
+    Import {
+        /// File path
+        file: PathBuf,
+    },
+
+    /// Export keys to file
+    Export {
+        /// Output file path
+        output: PathBuf,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum NamespaceCommands {
+    /// List all namespaces
+    List,
+
+    /// Create a new namespace
+    Create {
+        name: String,
+    },
+
+    /// Switch to a namespace
+    Switch {
+        namespace_id: String,
+    },
+
+    /// Show current namespace
+    Current,
+}
+
+#[derive(Subcommand)]
+pub enum ConfigCommands {
+    /// Set API token
+    SetToken {
+        token: String,
+    },
+
+    /// Set account ID
+    SetAccount {
+        account_id: String,
+    },
+
+    /// Set namespace ID
+    SetNamespace {
+        namespace_id: String,
+    },
+
+    /// Show current configuration
+    Show,
+
+    /// Reset configuration
+    Reset,
+}

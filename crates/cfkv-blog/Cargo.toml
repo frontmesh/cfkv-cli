@@ -1,0 +1,17 @@
+[package]
+name = "cfkv-blog"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Cloudflare KV plugin for Markdown blog management"
+
+[dependencies]
+cloudflare-kv = { path = "../cloudflare-kv" }
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+regex = "1.10"
+chrono = { version = "0.4", features = ["serde"] }

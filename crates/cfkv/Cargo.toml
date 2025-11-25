@@ -1,0 +1,24 @@
+[package]
+name = "cfkv"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "CLI tool for Cloudflare KV operations"
+
+[[bin]]
+name = "cfkv"
+path = "src/main.rs"
+
+[dependencies]
+cloudflare-kv = { path = "../cloudflare-kv" }
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+reqwest.workspace = true
+tokio.workspace = true
+clap.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+xdg = "2.5"
