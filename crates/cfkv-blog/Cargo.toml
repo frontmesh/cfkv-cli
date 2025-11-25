@@ -8,8 +8,9 @@ description = "Cloudflare KV plugin for Markdown blog management"
 
 [dependencies]
 cloudflare-kv = { path = "../cloudflare-kv" }
-serde.workspace = true
+serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
+serde_yaml = "0.9"
 tokio.workspace = true
 thiserror.workspace = true
 tracing.workspace = true

@@ -102,6 +102,12 @@ pub enum Commands {
         #[command(subcommand)]
         command: ConfigCommands,
     },
+
+    /// Blog post management
+    Blog {
+        #[command(subcommand)]
+        command: BlogCommands,
+    },
 }
 
 #[derive(Subcommand)]
@@ -166,4 +172,22 @@ pub enum ConfigCommands {
 
     /// Reset configuration
     Reset,
+}
+
+#[derive(Subcommand)]
+pub enum BlogCommands {
+    /// Publish a blog post from markdown file
+    Publish {
+        /// Path to markdown file
+        file: PathBuf,
+    },
+
+    /// List all published blog posts
+    List,
+
+    /// Delete a blog post by slug
+    Delete {
+        /// Post slug
+        slug: String,
+    },
 }
