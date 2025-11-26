@@ -2,6 +2,8 @@
 
 A command-line interface for managing Cloudflare Workers KV storage. Written in Rust with async/await support.
 
+**📖 Documentation:** For detailed guides, see the [`docs/`](docs/) folder
+
 ## Features
 
 - **CRUD Operations** - Get, put, and delete key-value pairs
@@ -140,6 +142,8 @@ cfkv config show
 ```
 
 ## Multiple Storage Management
+
+For comprehensive storage management documentation, see [**docs/STORAGE_MANAGEMENT.md**](docs/STORAGE_MANAGEMENT.md).
 
 ### Overview
 
