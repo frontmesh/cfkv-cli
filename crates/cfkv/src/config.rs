@@ -2,6 +2,7 @@ use cloudflare_kv::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
+#[cfg(unix)]
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
@@ -109,11 +110,21 @@ impl Config {
 
     /// Get config directory
     pub fn config_dir() -> Result<PathBuf> {
-        if let Ok(xdg_dirs) = xdg::BaseDirectories::new() {
-            Ok(xdg_dirs.get_config_home())
-        } else {
-            let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-            Ok(PathBuf::from(home).join(".config"))
+        #[cfg(unix)]
+        {
+            if let Ok(xdg_dirs) = xdg::BaseDirectories::new() {
+                Ok(xdg_dirs.get_config_home())
+            } else {
+                let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+                Ok(PathBuf::from(home).join(".config"))
+            }
+        }
+        #[cfg(not(unix))]
+        {
+            let config_dir = std::env::var("APPDATA")
+                .or_else(|_| std::env::var("USERPROFILE"))
+                .unwrap_or_else(|_| ".".to_string());
+            Ok(PathBuf::from(config_dir))
         }
     }
 
