@@ -1,4 +1,4 @@
-# CF-KV CLI
+# CFKV CLI
 
 A command-line interface for managing Cloudflare Workers KV storage. Written in Rust with async/await support.
 
@@ -22,7 +22,7 @@ A command-line interface for managing Cloudflare Workers KV storage. Written in 
 ### Build from Source
 ```bash
 git clone <repository-url>
-cd cf-kv-cli
+cd cfkv-cli
 cargo build --release
 ```
 
@@ -44,24 +44,24 @@ If you only built the release binary, you can either:
 
 1. **Use the full path**:
    ```bash
-   /Users/vv/Projects/Rust/cf-kv-cli/target/release/cfkv --help
+   /<PROJECT_PATH>/cfkv-cli/target/release/cfkv --help
    ```
 
 2. **Add to PATH temporarily** (in current shell):
    ```bash
-   export PATH="/path/to/cf-kv-cli/target/release:$PATH"
+   export PATH="/path/to/cfkv-cli/target/release:$PATH"
    cfkv --help
    ```
 
 3. **Add to PATH permanently** (edit `~/.zshrc`, `~/.bashrc`, or `~/.bash_profile`):
    ```bash
-   export PATH="/path/to/cf-kv-cli/target/release:$PATH"
+   export PATH="/path/to/cfkv-cli/target/release:$PATH"
    ```
    Then reload: `source ~/.zshrc`
 
 4. **Create a symlink**:
    ```bash
-   sudo ln -s /path/to/cf-kv-cli/target/release/cfkv /usr/local/bin/cfkv
+   sudo ln -s /path/to/cfkv-cli/target/release/cfkv /usr/local/bin/cfkv
    ```
 
 ## Configuration
