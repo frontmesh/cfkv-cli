@@ -46,7 +46,9 @@ impl Formatter {
     pub fn format_success(message: &str, format: OutputFormat) -> String {
         match format {
             OutputFormat::Json => Self::format_json(json!({ "success": true, "message": message })),
-            OutputFormat::Yaml => Self::format_structured(json!({ "success": true, "message": message }), format),
+            OutputFormat::Yaml => {
+                Self::format_structured(json!({ "success": true, "message": message }), format)
+            }
             OutputFormat::Text => message.to_string(),
         }
     }
@@ -54,7 +56,9 @@ impl Formatter {
     pub fn format_error(error: &str, format: OutputFormat) -> String {
         match format {
             OutputFormat::Json => Self::format_json(json!({ "error": error, "success": false })),
-            OutputFormat::Yaml => Self::format_structured(json!({ "error": error, "success": false }), format),
+            OutputFormat::Yaml => {
+                Self::format_structured(json!({ "error": error, "success": false }), format)
+            }
             OutputFormat::Text => format!("Error: {}", error),
         }
     }
@@ -66,23 +70,47 @@ mod tests {
 
     #[test]
     fn test_output_format_from_str() {
-        assert!(matches!(OutputFormat::from_str("json"), Some(OutputFormat::Json)));
-        assert!(matches!(OutputFormat::from_str("yaml"), Some(OutputFormat::Yaml)));
-        assert!(matches!(OutputFormat::from_str("yml"), Some(OutputFormat::Yaml)));
-        assert!(matches!(OutputFormat::from_str("text"), Some(OutputFormat::Text)));
+        assert!(matches!(
+            OutputFormat::from_str("json"),
+            Some(OutputFormat::Json)
+        ));
+        assert!(matches!(
+            OutputFormat::from_str("yaml"),
+            Some(OutputFormat::Yaml)
+        ));
+        assert!(matches!(
+            OutputFormat::from_str("yml"),
+            Some(OutputFormat::Yaml)
+        ));
+        assert!(matches!(
+            OutputFormat::from_str("text"),
+            Some(OutputFormat::Text)
+        ));
         assert!(OutputFormat::from_str("invalid").is_none());
     }
 
     #[test]
     fn test_output_format_case_insensitive() {
-        assert!(matches!(OutputFormat::from_str("JSON"), Some(OutputFormat::Json)));
-        assert!(matches!(OutputFormat::from_str("YAML"), Some(OutputFormat::Yaml)));
-        assert!(matches!(OutputFormat::from_str("TEXT"), Some(OutputFormat::Text)));
+        assert!(matches!(
+            OutputFormat::from_str("JSON"),
+            Some(OutputFormat::Json)
+        ));
+        assert!(matches!(
+            OutputFormat::from_str("YAML"),
+            Some(OutputFormat::Yaml)
+        ));
+        assert!(matches!(
+            OutputFormat::from_str("TEXT"),
+            Some(OutputFormat::Text)
+        ));
     }
 
     #[test]
     fn test_format_text() {
-        assert_eq!(Formatter::format_text("hello world", OutputFormat::Text), "hello world");
+        assert_eq!(
+            Formatter::format_text("hello world", OutputFormat::Text),
+            "hello world"
+        );
         assert!(Formatter::format_text("test", OutputFormat::Json).contains("value"));
         assert!(Formatter::format_text("test", OutputFormat::Yaml).contains("value"));
     }

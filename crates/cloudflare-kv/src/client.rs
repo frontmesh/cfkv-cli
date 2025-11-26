@@ -263,9 +263,13 @@ mod tests {
         let config = test_config();
         let kv_endpoint = config.kv_endpoint();
         let list_endpoint = config.kv_list_endpoint();
-        
-        assert!(kv_endpoint.contains("accounts/account-id/storage/kv/namespaces/namespace-id/values"));
-        assert!(list_endpoint.contains("accounts/account-id/storage/kv/namespaces/namespace-id/keys"));
+
+        assert!(
+            kv_endpoint.contains("accounts/account-id/storage/kv/namespaces/namespace-id/values")
+        );
+        assert!(
+            list_endpoint.contains("accounts/account-id/storage/kv/namespaces/namespace-id/keys")
+        );
     }
 
     #[test]
@@ -273,7 +277,7 @@ mod tests {
         let params = PaginationParams::new().with_limit(100);
         assert_eq!(params.limit, Some(100));
         assert_eq!(params.cursor, None);
-        
+
         let params_with_cursor = params.with_cursor("token".to_string());
         assert_eq!(params_with_cursor.cursor, Some("token".to_string()));
     }
@@ -287,7 +291,7 @@ mod tests {
             expiration: None,
         };
         assert_eq!(pair.key, "test-key");
-        
+
         let metadata = KeyMetadata {
             name: "my-key".to_string(),
             expiration: Some(1234567890),
@@ -319,7 +323,7 @@ mod tests {
         let creds = AuthCredentials::token("new-token");
         let config2 = ClientConfig::new("new-account", "new-namespace", creds);
         client.update_config(config2);
-        
+
         assert_eq!(client.config().account_id, "new-account");
     }
 
@@ -327,7 +331,7 @@ mod tests {
     fn test_auth_header() {
         let token_creds = AuthCredentials::token("my-token");
         assert_eq!(token_creds.auth_header(), "Bearer my-token");
-        
+
         let oauth_creds = AuthCredentials::oauth("my-oauth");
         assert_eq!(oauth_creds.auth_header(), "Bearer my-oauth");
     }

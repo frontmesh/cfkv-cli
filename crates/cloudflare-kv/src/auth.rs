@@ -12,9 +12,7 @@ pub struct AuthManager {
 impl AuthManager {
     /// Create a new auth manager
     pub fn new() -> Self {
-        Self {
-            credentials: None,
-        }
+        Self { credentials: None }
     }
 
     /// Set authentication credentials
@@ -136,7 +134,7 @@ mod tests {
     fn test_auth_manager() {
         let manager = AuthManager::new();
         assert!(manager.credentials().is_err());
-        
+
         let creds = AuthCredentials::token("test-token");
         let manager = AuthManager::new().with_credentials(creds);
         assert!(manager.credentials().is_ok());
@@ -149,7 +147,7 @@ mod tests {
             AuthCredentials::Token(t) => assert_eq!(t, "secret-token"),
             _ => panic!("Expected token"),
         }
-        
+
         let oauth_config = r#"oauth = "oauth-token""#;
         match AuthManager::parse_config(oauth_config).unwrap() {
             AuthCredentials::OAuth(t) => assert_eq!(t, "oauth-token"),
@@ -180,7 +178,7 @@ token  =  "my-token"
     fn test_auth_header_formatting() {
         let token = AuthCredentials::token("api-token");
         assert_eq!(token.auth_header(), "Bearer api-token");
-        
+
         let oauth = AuthCredentials::oauth("oauth-token");
         assert_eq!(oauth.auth_header(), "Bearer oauth-token");
     }
