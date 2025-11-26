@@ -62,7 +62,7 @@ impl MarkdownParser {
                     .iter()
                     .map(|v| {
                         v.as_str().map(|s| s.to_string()).ok_or_else(|| {
-                            BlogError::ValidationError(format!("Invalid tag format"))
+                            BlogError::ValidationError("Invalid tag format".to_string())
                         })
                     })
                     .collect();

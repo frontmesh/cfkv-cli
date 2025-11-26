@@ -24,7 +24,7 @@ impl<'a> BlogPublisher<'a> {
         debug!("Publishing blog post from: {}", file_path.display());
 
         // Read file
-        let content = std::fs::read_to_string(file_path).map_err(|e| BlogError::IoError(e))?;
+        let content = std::fs::read_to_string(file_path).map_err(BlogError::IoError)?;
 
         // Parse markdown
         let parsed = MarkdownParser::parse(&content)?;

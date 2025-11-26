@@ -417,8 +417,7 @@ async fn handle_storage_command(
                         .iter()
                         .map(|name| {
                             let storage = config.get_storage(name).unwrap();
-                            let is_active =
-                                config.active_storage.as_ref().map(|s| s.as_str()) == Some(name);
+                            let is_active = config.active_storage.as_deref() == Some(name);
                             serde_json::json!({
                                 "name": storage.name,
                                 "account_id": storage.account_id,
@@ -434,8 +433,7 @@ async fn handle_storage_command(
                         .iter()
                         .map(|name| {
                             let storage = config.get_storage(name).unwrap();
-                            let is_active =
-                                config.active_storage.as_ref().map(|s| s.as_str()) == Some(name);
+                            let is_active = config.active_storage.as_deref() == Some(name);
                             serde_json::json!({
                                 "name": storage.name,
                                 "account_id": storage.account_id,
@@ -450,8 +448,7 @@ async fn handle_storage_command(
                     println!("Available storages:\n");
                     for name in storages {
                         let storage = config.get_storage(name).unwrap();
-                        let is_active =
-                            config.active_storage.as_ref().map(|s| s.as_str()) == Some(name);
+                        let is_active = config.active_storage.as_deref() == Some(name);
                         let marker = if is_active { "* " } else { "  " };
                         println!(
                             "{}{}  (account: {}, namespace: {})",

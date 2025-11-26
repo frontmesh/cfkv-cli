@@ -13,7 +13,7 @@ pub struct Storage {
     pub api_token: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
 pub struct Config {
     /// Map of storage names to their configurations
     #[serde(default)]
@@ -182,7 +182,7 @@ impl Config {
         self.storages.remove(name);
 
         // If the removed storage was active, switch to another one
-        if self.active_storage.as_ref().map(|s| s.as_str()) == Some(name) {
+        if self.active_storage.as_deref() == Some(name) {
             self.active_storage = self.storages.keys().next().cloned();
         }
 
@@ -201,7 +201,7 @@ impl Config {
             self.storages.insert(new_name.clone(), storage);
 
             // Update active storage if it was the renamed one
-            if self.active_storage.as_ref().map(|s| s.as_str()) == Some(old_name) {
+            if self.active_storage.as_deref() == Some(old_name) {
                 self.active_storage = Some(new_name);
             }
 
@@ -211,18 +211,6 @@ impl Config {
                 "Storage '{}' not found",
                 old_name
             )))
-        }
-    }
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            storages: HashMap::new(),
-            active_storage: None,
-            account_id: None,
-            namespace_id: None,
-            api_token: None,
         }
     }
 }
