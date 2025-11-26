@@ -1,6 +1,7 @@
 use crate::error::{KvError, Result};
 use crate::types::AuthCredentials;
 use std::fs;
+#[cfg(unix)]
 use std::io::Write;
 use std::path::Path;
 
