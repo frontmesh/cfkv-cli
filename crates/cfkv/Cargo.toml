@@ -23,3 +23,4 @@ thiserror.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 xdg = "2.5"
+lazy_static = "1.4"

@@ -217,6 +217,23 @@ pub enum StorageCommands {
         #[arg(short, long)]
         name: Option<String>,
     },
+
+    /// Export storages to a file
+    Export {
+        /// Output file path
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
+    /// Import storages from a file
+    Import {
+        /// Input file path
+        #[arg(short, long)]
+        file: PathBuf,
+    },
+
+    /// Load storages from environment variables
+    LoadEnv,
 }
 
 #[derive(Subcommand)]

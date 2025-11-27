@@ -552,6 +552,57 @@ async fn handle_storage_command(
             };
             println!("{}", output);
         }
+        StorageCommands::Export { file } => {
+            let json = config.export_to_json()?;
+
+            if let Some(output_path) = file {
+                fs::write(&output_path, &json)?;
+                println!(
+                    "{}",
+                    Formatter::format_success(
+                        &format!("Storages exported to '{}'", output_path.display()),
+                        format
+                    )
+                );
+            } else {
+                println!("{}", json);
+            }
+        }
+        StorageCommands::Import { file } => {
+            let json = fs::read_to_string(&file)?;
+            config.import_from_json(&json)?;
+            config.save(config_path)?;
+            println!(
+                "{}",
+                Formatter::format_success(
+                    &format!("Storages imported from '{}'", file.display()),
+                    format
+                )
+            );
+        }
+        StorageCommands::LoadEnv => {
+            config.merge_from_env()?;
+            config.save(config_path)?;
+            let env_storages = config::Config::load_from_env()?;
+            if env_storages.is_empty() {
+                println!(
+                    "{}",
+                    Formatter::format_text("No storages found in environment variables", format)
+                );
+            } else {
+                let count = env_storages.len();
+                println!(
+                    "{}",
+                    Formatter::format_success(
+                        &format!("Loaded {} storage(ies) from environment variables", count),
+                        format
+                    )
+                );
+                for (name, _) in env_storages {
+                    println!("  - {}", name);
+                }
+            }
+        }
     }
 
     Ok(())
