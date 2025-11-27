@@ -6,6 +6,13 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+/// Format for exporting/importing storages
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct StorageExport {
+    pub storages: HashMap<String, Storage>,
+    pub active_storage: Option<String>,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Storage {
     pub name: String,
@@ -224,6 +231,76 @@ impl Config {
             )))
         }
     }
+
+    /// Export storages to JSON format
+    pub fn export_to_json(&self) -> Result<String> {
+        let export = StorageExport {
+            storages: self.storages.clone(),
+            active_storage: self.active_storage.clone(),
+        };
+        Ok(serde_json::to_string_pretty(&export)?)
+    }
+
+    /// Import storages from JSON format
+    pub fn import_from_json(&mut self, json: &str) -> Result<()> {
+        let export: StorageExport = serde_json::from_str(json)?;
+        self.storages = export.storages;
+        self.active_storage = export.active_storage;
+        Ok(())
+    }
+
+    /// Load or create storages from environment variables
+    /// Looks for variables in the format: CFKV_STORAGE_<NAME>_<FIELD>
+    /// Example: CFKV_STORAGE_PROD_ACCOUNT_ID, CFKV_STORAGE_PROD_NAMESPACE_ID, CFKV_STORAGE_PROD_API_TOKEN
+    pub fn load_from_env() -> Result<HashMap<String, Storage>> {
+        let mut storages = HashMap::new();
+        let mut storage_names = std::collections::HashSet::new();
+
+        // Scan environment variables for CFKV_STORAGE_* pattern
+        for (key, _value) in std::env::vars() {
+            if key.starts_with("CFKV_STORAGE_") {
+                let parts: Vec<&str> = key.split('_').collect();
+                if parts.len() >= 4 {
+                    // Format: CFKV_STORAGE_<NAME>_<FIELD>
+                    let storage_name = parts[2].to_lowercase();
+                    storage_names.insert(storage_name);
+                }
+            }
+        }
+
+        // Load each storage
+        for storage_name in storage_names {
+            let account_id_key = format!("CFKV_STORAGE_{}_ACCOUNT_ID", storage_name.to_uppercase());
+            let namespace_id_key =
+                format!("CFKV_STORAGE_{}_NAMESPACE_ID", storage_name.to_uppercase());
+            let api_token_key = format!("CFKV_STORAGE_{}_API_TOKEN", storage_name.to_uppercase());
+
+            if let (Ok(account_id), Ok(namespace_id), Ok(api_token)) = (
+                std::env::var(&account_id_key),
+                std::env::var(&namespace_id_key),
+                std::env::var(&api_token_key),
+            ) {
+                let storage = Storage {
+                    name: storage_name.clone(),
+                    account_id,
+                    namespace_id,
+                    api_token,
+                };
+                storages.insert(storage_name, storage);
+            }
+        }
+
+        Ok(storages)
+    }
+
+    /// Merge environment variable storages with existing config
+    pub fn merge_from_env(&mut self) -> Result<()> {
+        let env_storages = Self::load_from_env()?;
+        for (name, storage) in env_storages {
+            self.storages.insert(name, storage);
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -390,5 +467,105 @@ mod tests {
         // Deserialize
         let deserialized: Config = serde_json::from_str(&json).unwrap();
         assert_eq!(config.storages.len(), deserialized.storages.len());
+    }
+
+    #[test]
+    fn test_export_to_json() {
+        let mut config = Config::default();
+        config.add_storage(
+            "prod".to_string(),
+            "acc123".to_string(),
+            "ns456".to_string(),
+            "token789".to_string(),
+        );
+        config.add_storage(
+            "dev".to_string(),
+            "acc999".to_string(),
+            "ns999".to_string(),
+            "token999".to_string(),
+        );
+        config.set_active_storage("prod".to_string()).unwrap();
+
+        let json = config.export_to_json().unwrap();
+        assert!(json.contains("prod"));
+        assert!(json.contains("dev"));
+        assert!(json.contains("active_storage"));
+    }
+
+    #[test]
+    fn test_import_from_json() {
+        let json = r#"{
+            "storages": {
+                "prod": {
+                    "name": "prod",
+                    "account_id": "acc123",
+                    "namespace_id": "ns456",
+                    "api_token": "token789"
+                },
+                "dev": {
+                    "name": "dev",
+                    "account_id": "acc999",
+                    "namespace_id": "ns999",
+                    "api_token": "token999"
+                }
+            },
+            "active_storage": "prod"
+        }"#;
+
+        let mut config = Config::default();
+        config.import_from_json(json).unwrap();
+
+        assert_eq!(config.storages.len(), 2);
+        assert_eq!(config.active_storage, Some("prod".to_string()));
+        assert!(config.get_storage("prod").is_some());
+        assert!(config.get_storage("dev").is_some());
+    }
+
+    #[test]
+    fn test_load_from_env() {
+        // This test requires environment variables to be set
+        // In a real scenario, these would be set by the shell
+        std::env::set_var("CFKV_STORAGE_TEST_ACCOUNT_ID", "test_acc");
+        std::env::set_var("CFKV_STORAGE_TEST_NAMESPACE_ID", "test_ns");
+        std::env::set_var("CFKV_STORAGE_TEST_API_TOKEN", "test_token");
+
+        let storages = Config::load_from_env().unwrap();
+        assert!(storages.contains_key("test"));
+
+        let storage = storages.get("test").unwrap();
+        assert_eq!(storage.account_id, "test_acc");
+        assert_eq!(storage.namespace_id, "test_ns");
+        assert_eq!(storage.api_token, "test_token");
+
+        // Cleanup
+        std::env::remove_var("CFKV_STORAGE_TEST_ACCOUNT_ID");
+        std::env::remove_var("CFKV_STORAGE_TEST_NAMESPACE_ID");
+        std::env::remove_var("CFKV_STORAGE_TEST_API_TOKEN");
+    }
+
+    #[test]
+    fn test_merge_from_env() {
+        std::env::set_var("CFKV_STORAGE_ENV_ACCOUNT_ID", "env_acc");
+        std::env::set_var("CFKV_STORAGE_ENV_NAMESPACE_ID", "env_ns");
+        std::env::set_var("CFKV_STORAGE_ENV_API_TOKEN", "env_token");
+
+        let mut config = Config::default();
+        config.add_storage(
+            "prod".to_string(),
+            "prod_acc".to_string(),
+            "prod_ns".to_string(),
+            "prod_token".to_string(),
+        );
+
+        config.merge_from_env().unwrap();
+
+        assert_eq!(config.storages.len(), 2);
+        assert!(config.get_storage("prod").is_some());
+        assert!(config.get_storage("env").is_some());
+
+        // Cleanup
+        std::env::remove_var("CFKV_STORAGE_ENV_ACCOUNT_ID");
+        std::env::remove_var("CFKV_STORAGE_ENV_NAMESPACE_ID");
+        std::env::remove_var("CFKV_STORAGE_ENV_API_TOKEN");
     }
 }
