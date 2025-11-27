@@ -129,6 +129,7 @@ dependencies = [
  "cfkv-blog",
  "clap",
  "cloudflare-kv",
+ "lazy_static",
  "reqwest",
  "serde",
  "serde_json",

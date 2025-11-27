@@ -306,6 +306,11 @@ impl Config {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    lazy_static::lazy_static! {
+        static ref ENV_TEST_LOCK: Mutex<()> = Mutex::new(());
+    }
 
     #[test]
     fn test_config_default() {
@@ -523,31 +528,58 @@ mod tests {
 
     #[test]
     fn test_load_from_env() {
+        let _guard = ENV_TEST_LOCK.lock().unwrap();
+
+        // Use a unique storage name to avoid conflicts with other tests
+        let unique_name = format!("testload{}", std::process::id());
+        let upper_name = unique_name.to_uppercase();
+
         // This test requires environment variables to be set
         // In a real scenario, these would be set by the shell
-        std::env::set_var("CFKV_STORAGE_TEST_ACCOUNT_ID", "test_acc");
-        std::env::set_var("CFKV_STORAGE_TEST_NAMESPACE_ID", "test_ns");
-        std::env::set_var("CFKV_STORAGE_TEST_API_TOKEN", "test_token");
+        std::env::set_var(
+            format!("CFKV_STORAGE_{}_ACCOUNT_ID", upper_name),
+            "test_acc",
+        );
+        std::env::set_var(
+            format!("CFKV_STORAGE_{}_NAMESPACE_ID", upper_name),
+            "test_ns",
+        );
+        std::env::set_var(
+            format!("CFKV_STORAGE_{}_API_TOKEN", upper_name),
+            "test_token",
+        );
 
         let storages = Config::load_from_env().unwrap();
-        assert!(storages.contains_key("test"));
+        assert!(storages.contains_key(&unique_name));
 
-        let storage = storages.get("test").unwrap();
+        let storage = storages.get(&unique_name).unwrap();
         assert_eq!(storage.account_id, "test_acc");
         assert_eq!(storage.namespace_id, "test_ns");
         assert_eq!(storage.api_token, "test_token");
 
         // Cleanup
-        std::env::remove_var("CFKV_STORAGE_TEST_ACCOUNT_ID");
-        std::env::remove_var("CFKV_STORAGE_TEST_NAMESPACE_ID");
-        std::env::remove_var("CFKV_STORAGE_TEST_API_TOKEN");
+        std::env::remove_var(format!("CFKV_STORAGE_{}_ACCOUNT_ID", upper_name));
+        std::env::remove_var(format!("CFKV_STORAGE_{}_NAMESPACE_ID", upper_name));
+        std::env::remove_var(format!("CFKV_STORAGE_{}_API_TOKEN", upper_name));
     }
 
     #[test]
     fn test_merge_from_env() {
-        std::env::set_var("CFKV_STORAGE_ENV_ACCOUNT_ID", "env_acc");
-        std::env::set_var("CFKV_STORAGE_ENV_NAMESPACE_ID", "env_ns");
-        std::env::set_var("CFKV_STORAGE_ENV_API_TOKEN", "env_token");
+        let _guard = ENV_TEST_LOCK.lock().unwrap();
+
+        // Use a unique storage name to avoid conflicts with other tests
+        let unique_name = format!("testmerge{}", std::process::id());
+        let upper_name = unique_name.to_uppercase();
+
+        std::env::set_var(format!("CFKV_STORAGE_{}_ACCOUNT_ID", upper_name), "env_acc");
+        std::env::set_var(
+            format!("CFKV_STORAGE_{}_NAMESPACE_ID", upper_name),
+            "env_ns",
+        );
+        std::env::set_var(
+            format!("CFKV_STORAGE_{}_API_TOKEN", upper_name),
+            "env_token",
+        );
 
         let mut config = Config::default();
         config.add_storage(
@@ -561,11 +593,11 @@ mod tests {
 
         assert_eq!(config.storages.len(), 2);
         assert!(config.get_storage("prod").is_some());
-        assert!(config.get_storage("env").is_some());
+        assert!(config.get_storage(&unique_name).is_some());
 
         // Cleanup
-        std::env::remove_var("CFKV_STORAGE_ENV_ACCOUNT_ID");
-        std::env::remove_var("CFKV_STORAGE_ENV_NAMESPACE_ID");
-        std::env::remove_var("CFKV_STORAGE_ENV_API_TOKEN");
+        std::env::remove_var(format!("CFKV_STORAGE_{}_ACCOUNT_ID", upper_name));
+        std::env::remove_var(format!("CFKV_STORAGE_{}_NAMESPACE_ID", upper_name));
+        std::env::remove_var(format!("CFKV_STORAGE_{}_API_TOKEN", upper_name));
     }
 }
