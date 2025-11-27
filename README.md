@@ -2,6 +2,8 @@
 
 A command-line interface for managing Cloudflare Workers KV storage. Written in Rust with async/await support.
 
+**📖 Documentation:** For detailed guides, see the [`docs/`](docs/) folder
+
 ## Features
 
 - **CRUD Operations** - Get, put, and delete key-value pairs
@@ -138,6 +140,149 @@ export CF_NAMESPACE_ID="your-namespace-id"
 
 cfkv config show
 ```
+
+## Multiple Storage Management
+
+For comprehensive storage management documentation, see [**docs/STORAGE_MANAGEMENT.md**](docs/STORAGE_MANAGEMENT.md).
+
+### Overview
+
+cfkv supports managing multiple named storage configurations. This allows you to easily switch between different Cloudflare accounts, namespaces, or environments (production, staging, development, etc.) without having to reconfigure credentials each time.
+
+### Adding a Storage
+
+Add a new named storage with your credentials:
+
+```bash
+# Add a production storage
+cfkv storage add prod \
+  --account-id <ACCOUNT_ID> \
+  --namespace-id <NAMESPACE_ID> \
+  --api-token <API_TOKEN>
+
+# Add a development storage
+cfkv storage add dev \
+  --account-id <DEV_ACCOUNT_ID> \
+  --namespace-id <DEV_NAMESPACE_ID> \
+  --api-token <DEV_API_TOKEN>
+
+# Add a staging storage
+cfkv storage add staging \
+  --account-id <STAGING_ACCOUNT_ID> \
+  --namespace-id <STAGING_NAMESPACE_ID> \
+  --api-token <STAGING_API_TOKEN>
+```
+
+### Listing All Storages
+
+View all configured storages and see which one is active (marked with `*`):
+
+```bash
+cfkv storage list
+
+# Output:
+# Available storages:
+#
+# * prod  (account: abc123, namespace: ns456)
+#   dev  (account: def456, namespace: ns789)
+#   staging  (account: ghi789, namespace: ns012)
+```
+
+With JSON output:
+
+```bash
+cfkv --format json storage list
+```
+
+### Viewing Current Storage
+
+Display details about the currently active storage:
+
+```bash
+cfkv storage current
+
+# Output:
+# Current storage: prod
+# Account ID: abc123
+# Namespace ID: ns456
+```
+
+### Switching Between Storages
+
+Switch to a different storage. All subsequent commands will use the new storage:
+
+```bash
+# Switch to development storage
+cfkv storage switch dev
+
+# Now all commands use the dev storage
+cfkv get mykey  # Gets from dev namespace
+cfkv put mykey --value "test"  # Puts to dev namespace
+```
+
+### Viewing Storage Details
+
+Show details about a specific storage:
+
+```bash
+# Show current storage (default)
+cfkv storage show
+
+# Show details of a specific storage
+cfkv storage show --name prod
+```
+
+### Renaming a Storage
+
+Rename a storage configuration:
+
+```bash
+cfkv storage rename prod production
+```
+
+### Removing a Storage
+
+Remove a storage configuration:
+
+```bash
+cfkv storage remove staging
+```
+
+If the removed storage was active, cfkv will automatically switch to another available storage.
+
+### Configuration File Format
+
+Storage configurations are saved in your config file:
+
+```json
+{
+  "storages": {
+    "prod": {
+      "name": "prod",
+      "account_id": "abc123...",
+      "namespace_id": "ns456...",
+      "api_token": "token789..."
+    },
+    "dev": {
+      "name": "dev",
+      "account_id": "def456...",
+      "namespace_id": "ns789...",
+      "api_token": "token012..."
+    }
+  },
+  "active_storage": "prod"
+}
+```
+
+### Backwards Compatibility
+
+If you're upgrading from an older version of cfkv that used the legacy single-storage configuration format, your existing configuration will be automatically migrated to the new format on first use:
+
+- Your existing credentials (account_id, namespace_id, api_token) will be migrated to a storage named `default`
+- The `default` storage will be set as active
+- All subsequent commands will work with the migrated storage
+
+No manual action is required for the migration.
 
 ## Usage
 

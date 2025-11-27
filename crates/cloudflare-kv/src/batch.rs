@@ -31,9 +31,8 @@ impl BatchBuilder {
 
     /// Add a delete operation
     pub fn delete(mut self, key: impl Into<String>) -> Self {
-        self.operations.push(BatchOperation::Delete {
-            key: key.into(),
-        });
+        self.operations
+            .push(BatchOperation::Delete { key: key.into() });
         self
     }
 

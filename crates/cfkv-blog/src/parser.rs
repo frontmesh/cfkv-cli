@@ -20,9 +20,9 @@ impl MarkdownParser {
         let regex = Regex::new(r"^---\n([\s\S]*?)\n---\n([\s\S]*)$")
             .map_err(|e| BlogError::FrontmatterError(e.to_string()))?;
 
-        let captures = regex
-            .captures(content)
-            .ok_or_else(|| BlogError::FrontmatterError("Invalid markdown format: missing frontmatter".to_string()))?;
+        let captures = regex.captures(content).ok_or_else(|| {
+            BlogError::FrontmatterError("Invalid markdown format: missing frontmatter".to_string())
+        })?;
 
         let yaml_str = captures.get(1).unwrap().as_str();
         let markdown_content = captures.get(2).unwrap().as_str();
@@ -61,15 +61,18 @@ impl MarkdownParser {
                 let tags: Result<Vec<String>> = seq
                     .iter()
                     .map(|v| {
-                        v.as_str()
-                            .map(|s| s.to_string())
-                            .ok_or_else(|| BlogError::ValidationError(format!("Invalid tag format")))
+                        v.as_str().map(|s| s.to_string()).ok_or_else(|| {
+                            BlogError::ValidationError("Invalid tag format".to_string())
+                        })
                     })
                     .collect();
                 tags
             }
             None => Ok(vec![]),
-            _ => Err(BlogError::ValidationError(format!("Invalid format for field: {}", key))),
+            _ => Err(BlogError::ValidationError(format!(
+                "Invalid format for field: {}",
+                key
+            ))),
         }
     }
 
@@ -79,7 +82,10 @@ impl MarkdownParser {
 
         for field in &required {
             if !metadata.contains_key(*field) {
-                return Err(BlogError::ValidationError(format!("Missing required field: {}", field)));
+                return Err(BlogError::ValidationError(format!(
+                    "Missing required field: {}",
+                    field
+                )));
             }
         }
 
@@ -89,13 +95,15 @@ impl MarkdownParser {
             .map_err(|e| BlogError::FrontmatterError(e.to_string()))?;
 
         if !date_regex.is_match(&date) {
-            return Err(BlogError::ValidationError("Date must be in YYYY-MM-DD format".to_string()));
+            return Err(BlogError::ValidationError(
+                "Date must be in YYYY-MM-DD format".to_string(),
+            ));
         }
 
         // Validate slug format (lowercase, numbers, hyphens only)
         let slug = Self::get_string(metadata, "slug")?;
-        let slug_regex = Regex::new(r"^[a-z0-9-]+$")
-            .map_err(|e| BlogError::FrontmatterError(e.to_string()))?;
+        let slug_regex =
+            Regex::new(r"^[a-z0-9-]+$").map_err(|e| BlogError::FrontmatterError(e.to_string()))?;
 
         if !slug_regex.is_match(&slug) {
             return Err(BlogError::ValidationError(
@@ -147,8 +155,14 @@ Content only."#
     fn test_parse_complete_markdown() {
         let parsed = MarkdownParser::parse(&sample_markdown()).unwrap();
 
-        assert_eq!(parsed.metadata.get("slug").unwrap().as_str(), Some("my-post"));
-        assert_eq!(parsed.metadata.get("title").unwrap().as_str(), Some("My Blog Post"));
+        assert_eq!(
+            parsed.metadata.get("slug").unwrap().as_str(),
+            Some("my-post")
+        );
+        assert_eq!(
+            parsed.metadata.get("title").unwrap().as_str(),
+            Some("My Blog Post")
+        );
         assert!(parsed.content.contains("# Hello World"));
     }
 

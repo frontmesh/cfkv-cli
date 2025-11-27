@@ -65,9 +65,7 @@ pub enum Commands {
     },
 
     /// Delete a key
-    Delete {
-        key: String,
-    },
+    Delete { key: String },
 
     /// List all keys
     List {
@@ -92,6 +90,12 @@ pub enum Commands {
     Namespace {
         #[command(subcommand)]
         command: NamespaceCommands,
+    },
+
+    /// Storage management
+    Storage {
+        #[command(subcommand)]
+        command: StorageCommands,
     },
 
     /// Interactive mode
@@ -137,14 +141,10 @@ pub enum NamespaceCommands {
     List,
 
     /// Create a new namespace
-    Create {
-        name: String,
-    },
+    Create { name: String },
 
     /// Switch to a namespace
-    Switch {
-        namespace_id: String,
-    },
+    Switch { namespace_id: String },
 
     /// Show current namespace
     Current,
@@ -153,25 +153,70 @@ pub enum NamespaceCommands {
 #[derive(Subcommand)]
 pub enum ConfigCommands {
     /// Set API token
-    SetToken {
-        token: String,
-    },
+    SetToken { token: String },
 
     /// Set account ID
-    SetAccount {
-        account_id: String,
-    },
+    SetAccount { account_id: String },
 
     /// Set namespace ID
-    SetNamespace {
-        namespace_id: String,
-    },
+    SetNamespace { namespace_id: String },
 
     /// Show current configuration
     Show,
 
     /// Reset configuration
     Reset,
+}
+
+#[derive(Subcommand)]
+pub enum StorageCommands {
+    /// Add a new storage
+    Add {
+        /// Storage name
+        name: String,
+        /// Account ID
+        #[arg(short = 'a', long)]
+        account_id: String,
+        /// Namespace ID
+        #[arg(short = 'n', long)]
+        namespace_id: String,
+        /// API token
+        #[arg(short = 't', long)]
+        api_token: String,
+    },
+
+    /// List all storages
+    List,
+
+    /// Show current active storage
+    Current,
+
+    /// Switch to a different storage
+    Switch {
+        /// Storage name to switch to
+        name: String,
+    },
+
+    /// Remove a storage
+    Remove {
+        /// Storage name to remove
+        name: String,
+    },
+
+    /// Rename a storage
+    Rename {
+        /// Current storage name
+        old_name: String,
+        /// New storage name
+        new_name: String,
+    },
+
+    /// Show storage details
+    Show {
+        /// Storage name (defaults to current storage)
+        #[arg(short, long)]
+        name: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]

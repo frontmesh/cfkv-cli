@@ -2,10 +2,10 @@ mod cli;
 mod config;
 mod formatter;
 
-use cli::{Cli, Commands, BatchCommands, BlogCommands, ConfigCommands};
-use cloudflare_kv::{ClientConfig, KvClient, PaginationParams};
 use cfkv_blog::BlogPublisher;
 use clap::Parser;
+use cli::{BatchCommands, BlogCommands, Cli, Commands, ConfigCommands, StorageCommands};
+use cloudflare_kv::{ClientConfig, KvClient, PaginationParams};
 use formatter::{Formatter, OutputFormat};
 use std::fs;
 use std::path::Path;
@@ -49,62 +49,80 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     match cli.command {
-        Commands::Config { command } => handle_config_command(command, &config, &config_path, format).await?,
+        Commands::Config { command } => {
+            handle_config_command(command, &config, &config_path, format).await?
+        }
+        Commands::Storage { command } => {
+            // For storage commands, ensure migration is done and config is saved if needed
+            let needs_migration = config.storages.is_empty()
+                && (config.account_id.is_some()
+                    || config.namespace_id.is_some()
+                    || config.api_token.is_some());
+
+            if needs_migration {
+                config.migrate_legacy_format();
+                config.save(&config_path)?;
+            }
+
+            handle_storage_command(command, &mut config, &config_path, format).await?
+        }
         _ => {
             // Validate configuration for other commands
-            let account_id = config
-                .account_id
-                .ok_or("Account ID not configured. Set with: cfkv config set-account <ID>")?;
-            let namespace_id = config
-                .namespace_id
-                .ok_or("Namespace ID not configured. Set with: cfkv config set-namespace <ID>")?;
-            let api_token = config
-                .api_token
-                .ok_or("API token not configured. Set with: cfkv config set-token <TOKEN>")?;
+            // Try to get active storage, fallback to legacy format if available
+            let (account_id, namespace_id, api_token) = if let Some(storage) =
+                config.get_active_storage()
+            {
+                (
+                    storage.account_id.clone(),
+                    storage.namespace_id.clone(),
+                    storage.api_token.clone(),
+                )
+            } else if let (Some(acc), Some(ns), Some(token)) =
+                (&config.account_id, &config.namespace_id, &config.api_token)
+            {
+                (acc.clone(), ns.clone(), token.clone())
+            } else {
+                return Err("No storage configured. Add one with: cfkv storage add <name> --account-id <ID> --namespace-id <ID> --api-token <TOKEN>".into());
+            };
 
-            let client_config = ClientConfig::new(&account_id, &namespace_id, cloudflare_kv::AuthCredentials::token(api_token));
+            let client_config = ClientConfig::new(
+                &account_id,
+                &namespace_id,
+                cloudflare_kv::AuthCredentials::token(api_token),
+            );
             let client = KvClient::new(client_config);
 
             match cli.command {
-                Commands::Get { key, pretty } => {
-                    handle_get(&client, &key, format, pretty).await?
-                }
+                Commands::Get { key, pretty } => handle_get(&client, &key, format, pretty).await?,
                 Commands::Put {
                     key,
                     value,
                     file,
                     ttl,
                     metadata,
-                } => {
-                    handle_put(&client, &key, value, file, ttl, metadata, format).await?
-                }
+                } => handle_put(&client, &key, value, file, ttl, metadata, format).await?,
                 Commands::Delete { key } => handle_delete(&client, &key, format).await?,
                 Commands::List {
                     limit,
                     cursor,
                     metadata,
-                } => {
-                    handle_list(&client, limit, cursor, metadata, format).await?
-                }
-                Commands::Batch { command } => {
-                    handle_batch(&client, command, format).await?
-                }
+                } => handle_list(&client, limit, cursor, metadata, format).await?,
+                Commands::Batch { command } => handle_batch(&client, command, format).await?,
                 Commands::Namespace { command: _ } => {
-                    println!("{}", Formatter::format_text(
-                        "Namespace management coming soon",
-                        format
-                    ));
+                    println!(
+                        "{}",
+                        Formatter::format_text("Namespace management coming soon", format)
+                    );
                 }
                 Commands::Interactive => {
-                    println!("{}", Formatter::format_text(
-                        "Interactive mode coming soon",
-                        format
-                    ));
+                    println!(
+                        "{}",
+                        Formatter::format_text("Interactive mode coming soon", format)
+                    );
                 }
-                Commands::Blog { command } => {
-                    handle_blog(&client, command, format).await?
-                }
+                Commands::Blog { command } => handle_blog(&client, command, format).await?,
                 Commands::Config { .. } => unreachable!(),
+                Commands::Storage { .. } => unreachable!(),
             }
         }
     }
@@ -123,9 +141,15 @@ async fn handle_get(
             let output = match format {
                 OutputFormat::Json => {
                     if pretty {
-                        format!("{{\n  \"key\": \"{}\",\n  \"value\": \"{}\"\n}}", kv_pair.key, kv_pair.value)
+                        format!(
+                            "{{\n  \"key\": \"{}\",\n  \"value\": \"{}\"\n}}",
+                            kv_pair.key, kv_pair.value
+                        )
                     } else {
-                        format!("{{\"key\":\"{}\",\"value\":\"{}\"}}", kv_pair.key, kv_pair.value)
+                        format!(
+                            "{{\"key\":\"{}\",\"value\":\"{}\"}}",
+                            kv_pair.key, kv_pair.value
+                        )
                     }
                 }
                 OutputFormat::Yaml => {
@@ -136,7 +160,10 @@ async fn handle_get(
             println!("{}", output);
         }
         Ok(None) => {
-            eprintln!("{}", Formatter::format_error(&format!("Key not found: {}", key), format));
+            eprintln!(
+                "{}",
+                Formatter::format_error(&format!("Key not found: {}", key), format)
+            );
             std::process::exit(1);
         }
         Err(e) => {
@@ -162,7 +189,10 @@ async fn handle_put(
     } else if let Some(val) = value {
         val.into_bytes()
     } else {
-        eprintln!("{}", Formatter::format_error("Either --value or --file must be provided", format));
+        eprintln!(
+            "{}",
+            Formatter::format_error("Either --value or --file must be provided", format)
+        );
         std::process::exit(1);
     };
 
@@ -174,7 +204,10 @@ async fn handle_put(
     };
 
     match result {
-        Ok(()) => println!("{}", Formatter::format_success(&format!("Successfully put key: {}", key), format)),
+        Ok(()) => println!(
+            "{}",
+            Formatter::format_success(&format!("Successfully put key: {}", key), format)
+        ),
         Err(e) => {
             eprintln!("{}", Formatter::format_error(&e.to_string(), format));
             std::process::exit(1);
@@ -190,7 +223,10 @@ async fn handle_delete(
     format: OutputFormat,
 ) -> Result<(), Box<dyn std::error::Error>> {
     match client.delete(key).await {
-        Ok(()) => println!("{}", Formatter::format_success(&format!("Successfully deleted key: {}", key), format)),
+        Ok(()) => println!(
+            "{}",
+            Formatter::format_success(&format!("Successfully deleted key: {}", key), format)
+        ),
         Err(e) => {
             eprintln!("{}", Formatter::format_error(&e.to_string(), format));
             std::process::exit(1);
@@ -253,9 +289,12 @@ async fn handle_batch(
 ) -> Result<(), Box<dyn std::error::Error>> {
     match command {
         BatchCommands::Delete { keys } => {
-            let key_refs: Vec<&str> = keys.iter().map(|k| k.as_str()).collect();
+            let key_refs: Vec<&str> = keys.iter().map(|k: &String| k.as_str()).collect();
             match client.batch_delete(key_refs).await {
-                Ok(()) => println!("{}", Formatter::format_success("Batch delete successful", format)),
+                Ok(()) => println!(
+                    "{}",
+                    Formatter::format_success("Batch delete successful", format)
+                ),
                 Err(e) => {
                     eprintln!("{}", Formatter::format_error(&e.to_string(), format));
                     std::process::exit(1);
@@ -265,11 +304,17 @@ async fn handle_batch(
         BatchCommands::Import { file } => {
             let _content = fs::read_to_string(&file)?;
             // TODO: Parse JSON/YAML and import
-            println!("{}", Formatter::format_text("Batch import coming soon", format));
+            println!(
+                "{}",
+                Formatter::format_text("Batch import coming soon", format)
+            );
         }
         BatchCommands::Export { output: _ } => {
             // TODO: Export keys to file
-            println!("{}", Formatter::format_text("Batch export coming soon", format));
+            println!(
+                "{}",
+                Formatter::format_text("Batch export coming soon", format)
+            );
         }
     }
 
@@ -299,7 +344,10 @@ async fn handle_config_command(
             let mut new_config = config.clone();
             new_config.namespace_id = Some(namespace_id);
             new_config.save(config_path)?;
-            println!("{}", Formatter::format_success("Namespace ID saved", format));
+            println!(
+                "{}",
+                Formatter::format_success("Namespace ID saved", format)
+            );
         }
         ConfigCommands::Show => {
             let output = match format {
@@ -310,7 +358,11 @@ async fn handle_config_command(
                         "Account ID: {}\nNamespace ID: {}\nAPI Token: {}",
                         config.account_id.as_deref().unwrap_or("Not set"),
                         config.namespace_id.as_deref().unwrap_or("Not set"),
-                        if config.api_token.is_some() { "***" } else { "Not set" }
+                        if config.api_token.is_some() {
+                            "***"
+                        } else {
+                            "Not set"
+                        }
                     )
                 }
             };
@@ -319,7 +371,186 @@ async fn handle_config_command(
         ConfigCommands::Reset => {
             let new_config = config::Config::default();
             new_config.save(config_path)?;
-            println!("{}", Formatter::format_success("Configuration reset", format));
+            println!(
+                "{}",
+                Formatter::format_success("Configuration reset", format)
+            );
+        }
+    }
+
+    Ok(())
+}
+
+async fn handle_storage_command(
+    command: StorageCommands,
+    config: &mut config::Config,
+    config_path: &Path,
+    format: OutputFormat,
+) -> Result<(), Box<dyn std::error::Error>> {
+    match command {
+        StorageCommands::Add {
+            name,
+            account_id,
+            namespace_id,
+            api_token,
+        } => {
+            config.add_storage(name.clone(), account_id, namespace_id, api_token);
+            config.save(config_path)?;
+            println!(
+                "{}",
+                Formatter::format_success(&format!("Storage '{}' added", name), format)
+            );
+        }
+        StorageCommands::List => {
+            let storages = config.list_storages();
+            if storages.is_empty() {
+                println!(
+                    "{}",
+                    Formatter::format_text("No storages configured", format)
+                );
+                return Ok(());
+            }
+
+            match format {
+                OutputFormat::Json => {
+                    let storage_list: Vec<serde_json::Value> = storages
+                        .iter()
+                        .map(|name| {
+                            let storage = config.get_storage(name).unwrap();
+                            let is_active = config.active_storage.as_deref() == Some(name);
+                            serde_json::json!({
+                                "name": storage.name,
+                                "account_id": storage.account_id,
+                                "namespace_id": storage.namespace_id,
+                                "active": is_active,
+                            })
+                        })
+                        .collect();
+                    println!("{}", serde_json::to_string_pretty(&storage_list)?);
+                }
+                OutputFormat::Yaml => {
+                    let storage_list: Vec<serde_json::Value> = storages
+                        .iter()
+                        .map(|name| {
+                            let storage = config.get_storage(name).unwrap();
+                            let is_active = config.active_storage.as_deref() == Some(name);
+                            serde_json::json!({
+                                "name": storage.name,
+                                "account_id": storage.account_id,
+                                "namespace_id": storage.namespace_id,
+                                "active": is_active,
+                            })
+                        })
+                        .collect();
+                    println!("{}", serde_yaml::to_string(&storage_list)?);
+                }
+                OutputFormat::Text => {
+                    println!("Available storages:\n");
+                    for name in storages {
+                        let storage = config.get_storage(name).unwrap();
+                        let is_active = config.active_storage.as_deref() == Some(name);
+                        let marker = if is_active { "* " } else { "  " };
+                        println!(
+                            "{}{}  (account: {}, namespace: {})",
+                            marker, name, storage.account_id, storage.namespace_id
+                        );
+                    }
+                }
+            }
+        }
+        StorageCommands::Current => match config.get_active_storage() {
+            Some(storage) => {
+                let output = match format {
+                    OutputFormat::Json => serde_json::to_string_pretty(&serde_json::json!({
+                        "name": storage.name,
+                        "account_id": storage.account_id,
+                        "namespace_id": storage.namespace_id,
+                    }))?,
+                    OutputFormat::Yaml => serde_yaml::to_string(&serde_json::json!({
+                        "name": storage.name,
+                        "account_id": storage.account_id,
+                        "namespace_id": storage.namespace_id,
+                    }))?,
+                    OutputFormat::Text => {
+                        format!(
+                            "Current storage: {}\nAccount ID: {}\nNamespace ID: {}",
+                            storage.name, storage.account_id, storage.namespace_id
+                        )
+                    }
+                };
+                println!("{}", output);
+            }
+            None => {
+                eprintln!(
+                    "{}",
+                    Formatter::format_error("No active storage configured", format)
+                );
+                std::process::exit(1);
+            }
+        },
+        StorageCommands::Switch { name } => {
+            config.set_active_storage(name.clone())?;
+            config.save(config_path)?;
+            println!(
+                "{}",
+                Formatter::format_success(&format!("Switched to storage '{}'", name), format)
+            );
+        }
+        StorageCommands::Remove { name } => {
+            config.remove_storage(&name)?;
+            config.save(config_path)?;
+            println!(
+                "{}",
+                Formatter::format_success(&format!("Storage '{}' removed", name), format)
+            );
+        }
+        StorageCommands::Rename { old_name, new_name } => {
+            config.rename_storage(&old_name, new_name.clone())?;
+            config.save(config_path)?;
+            println!(
+                "{}",
+                Formatter::format_success(
+                    &format!("Storage renamed from '{}' to '{}'", old_name, new_name),
+                    format
+                )
+            );
+        }
+        StorageCommands::Show { name } => {
+            let storage = if let Some(storage_name) = name {
+                config.get_storage(&storage_name).ok_or_else(|| {
+                    Box::new(std::io::Error::new(
+                        std::io::ErrorKind::NotFound,
+                        format!("Storage '{}' not found", &storage_name),
+                    )) as Box<dyn std::error::Error>
+                })?
+            } else {
+                config.get_active_storage().ok_or_else(|| {
+                    Box::new(std::io::Error::new(
+                        std::io::ErrorKind::NotFound,
+                        "No active storage configured",
+                    )) as Box<dyn std::error::Error>
+                })?
+            };
+
+            let output = match format {
+                OutputFormat::Json => serde_json::to_string_pretty(&serde_json::json!({
+                    "name": storage.name,
+                    "account_id": storage.account_id,
+                    "namespace_id": storage.namespace_id,
+                }))?,
+                OutputFormat::Yaml => serde_yaml::to_string(&serde_json::json!({
+                    "name": storage.name,
+                    "account_id": storage.account_id,
+                    "namespace_id": storage.namespace_id,
+                }))?,
+                OutputFormat::Text => {
+                    format!(
+                        "Storage: {}\nAccount ID: {}\nNamespace ID: {}",
+                        storage.name, storage.account_id, storage.namespace_id
+                    )
+                }
+            };
+            println!("{}", output);
         }
     }
 
@@ -336,13 +567,13 @@ async fn handle_blog(
     match command {
         BlogCommands::Publish { file } => {
             publisher.publish_from_file(&file).await?;
-            let title = file.file_name().and_then(|n| n.to_str()).unwrap_or("blog post");
+            let title = file
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("blog post");
             println!(
                 "{}",
-                Formatter::format_success(
-                    &format!("Successfully published: {}", title),
-                    format
-                )
+                Formatter::format_success(&format!("Successfully published: {}", title), format)
             );
         }
         BlogCommands::List => {

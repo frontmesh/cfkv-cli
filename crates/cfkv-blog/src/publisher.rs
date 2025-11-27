@@ -24,8 +24,7 @@ impl<'a> BlogPublisher<'a> {
         debug!("Publishing blog post from: {}", file_path.display());
 
         // Read file
-        let content = std::fs::read_to_string(file_path)
-            .map_err(|e| BlogError::IoError(e))?;
+        let content = std::fs::read_to_string(file_path).map_err(BlogError::IoError)?;
 
         // Parse markdown
         let parsed = MarkdownParser::parse(&content)?;
@@ -67,8 +66,7 @@ impl<'a> BlogPublisher<'a> {
     /// Save a blog post to KV
     async fn save_post(&self, post: &BlogPost) -> Result<()> {
         let key = format!("{}{}", POST_KEY_PREFIX, post.slug);
-        let value = serde_json::to_string(post)
-            .map_err(BlogError::JsonError)?;
+        let value = serde_json::to_string(post).map_err(BlogError::JsonError)?;
 
         self.client
             .put(&key, value.as_bytes())
@@ -85,8 +83,8 @@ impl<'a> BlogPublisher<'a> {
 
         match self.client.get(&key).await {
             Ok(Some(kv_pair)) => {
-                let post: BlogPost = serde_json::from_str(&kv_pair.value)
-                    .map_err(BlogError::JsonError)?;
+                let post: BlogPost =
+                    serde_json::from_str(&kv_pair.value).map_err(BlogError::JsonError)?;
                 Ok(Some(post))
             }
             Ok(None) => Ok(None),
@@ -130,8 +128,8 @@ impl<'a> BlogPublisher<'a> {
     async fn get_blog_list(&self) -> Result<Vec<BlogMeta>> {
         match self.client.get(BLOG_LIST_KEY).await {
             Ok(Some(kv_pair)) => {
-                let posts: Vec<BlogMeta> = serde_json::from_str(&kv_pair.value)
-                    .map_err(BlogError::JsonError)?;
+                let posts: Vec<BlogMeta> =
+                    serde_json::from_str(&kv_pair.value).map_err(BlogError::JsonError)?;
                 Ok(posts)
             }
             Ok(None) => Ok(vec![]),
@@ -156,8 +154,7 @@ impl<'a> BlogPublisher<'a> {
         blog_list.sort_by(|a, b| b.date.cmp(&a.date));
 
         // Save updated list
-        let list_json = serde_json::to_string(&blog_list)
-            .map_err(BlogError::JsonError)?;
+        let list_json = serde_json::to_string(&blog_list).map_err(BlogError::JsonError)?;
 
         self.client
             .put(BLOG_LIST_KEY, list_json.as_bytes())
@@ -176,8 +173,7 @@ impl<'a> BlogPublisher<'a> {
         blog_list.retain(|p| p.slug != slug);
 
         if blog_list.len() < original_len {
-            let list_json = serde_json::to_string(&blog_list)
-                .map_err(BlogError::JsonError)?;
+            let list_json = serde_json::to_string(&blog_list).map_err(BlogError::JsonError)?;
 
             self.client
                 .put(BLOG_LIST_KEY, list_json.as_bytes())
@@ -198,11 +194,7 @@ mod tests {
 
     fn create_test_client() -> KvClient {
         let creds = AuthCredentials::token("test-token");
-        let config = cloudflare_kv::ClientConfig::new(
-            "test-account",
-            "test-namespace",
-            creds,
-        );
+        let config = cloudflare_kv::ClientConfig::new("test-account", "test-namespace", creds);
         KvClient::new(config)
     }
 

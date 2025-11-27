@@ -37,4 +37,6 @@ pub use auth::AuthManager;
 pub use batch::{BatchBuilder, PaginatedIterator};
 pub use client::KvClient;
 pub use error::{KvError, Result};
-pub use types::{AuthCredentials, ClientConfig, KeyMetadata, KvPair, ListResponse, PaginationParams};
+pub use types::{
+    AuthCredentials, ClientConfig, KeyMetadata, KvPair, ListResponse, PaginationParams,
+};
