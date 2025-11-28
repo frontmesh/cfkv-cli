@@ -85,11 +85,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 return Err("No storage configured. Add one with: cfkv storage add <name> --account-id <ID> --namespace-id <ID> --api-token <TOKEN>".into());
             };
 
-            let client_config = ClientConfig::new(
+            let mut client_config = ClientConfig::new(
                 &account_id,
                 &namespace_id,
                 cloudflare_kv::AuthCredentials::token(api_token),
             );
+
+            // Apply local flag if specified
+            if cli.local {
+                client_config = client_config.with_local(true);
+            }
+
             let client = KvClient::new(client_config);
 
             match cli.command {

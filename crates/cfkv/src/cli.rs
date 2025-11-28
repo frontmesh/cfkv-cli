@@ -33,6 +33,10 @@ pub struct Cli {
     #[arg(short, long)]
     pub debug: bool,
 
+    /// Use local KV instance (wrangler dev)
+    #[arg(short, long)]
+    pub local: bool,
+
     #[command(subcommand)]
     pub command: Commands,
 }

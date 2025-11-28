@@ -35,7 +35,9 @@ pub struct ClientConfig {
     pub account_id: String,
     pub namespace_id: String,
     pub credentials: AuthCredentials,
-    pub base_url: String,
+    pub remote_base_url: String,
+    pub local_base_url: String,
+    pub is_local: bool,
 }
 
 impl ClientConfig {
@@ -49,15 +51,34 @@ impl ClientConfig {
             account_id: account_id.into(),
             namespace_id: namespace_id.into(),
             credentials,
-            base_url: "https://api.cloudflare.com/client/v4".to_string(),
+            remote_base_url: "https://api.cloudflare.com/client/v4".to_string(),
+            local_base_url: "http://localhost:8787".to_string(),
+            is_local: false,
         }
+    }
+
+    /// Get the current base URL based on local/remote setting
+    pub fn base_url(&self) -> &str {
+        if self.is_local {
+            &self.local_base_url
+        } else {
+            &self.remote_base_url
+        }
+    }
+
+    /// Set local mode
+    pub fn with_local(mut self, is_local: bool) -> Self {
+        self.is_local = is_local;
+        self
     }
 
     /// Get KV API endpoint URL
     pub fn kv_endpoint(&self) -> String {
         format!(
             "{}/accounts/{}/storage/kv/namespaces/{}/values",
-            self.base_url, self.account_id, self.namespace_id
+            self.base_url(),
+            self.account_id,
+            self.namespace_id
         )
     }
 
@@ -65,7 +86,9 @@ impl ClientConfig {
     pub fn kv_list_endpoint(&self) -> String {
         format!(
             "{}/accounts/{}/storage/kv/namespaces/{}/keys",
-            self.base_url, self.account_id, self.namespace_id
+            self.base_url(),
+            self.account_id,
+            self.namespace_id
         )
     }
 }

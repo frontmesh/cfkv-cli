@@ -259,7 +259,7 @@ mod tests {
     }
 
     #[test]
-    fn test_endpoint_urls() {
+    fn test_endpoint_urls_remote() {
         let config = test_config();
         let kv_endpoint = config.kv_endpoint();
         let list_endpoint = config.kv_list_endpoint();
@@ -267,9 +267,52 @@ mod tests {
         assert!(
             kv_endpoint.contains("accounts/account-id/storage/kv/namespaces/namespace-id/values")
         );
+        assert!(kv_endpoint.contains("https://api.cloudflare.com/client/v4"));
         assert!(
             list_endpoint.contains("accounts/account-id/storage/kv/namespaces/namespace-id/keys")
         );
+        assert!(list_endpoint.contains("https://api.cloudflare.com/client/v4"));
+    }
+
+    #[test]
+    fn test_endpoint_urls_local() {
+        let creds = AuthCredentials::token("test-token");
+        let config = ClientConfig::new("account-id", "namespace-id", creds).with_local(true);
+        let kv_endpoint = config.kv_endpoint();
+        let list_endpoint = config.kv_list_endpoint();
+
+        assert!(
+            kv_endpoint.contains("accounts/account-id/storage/kv/namespaces/namespace-id/values")
+        );
+        assert!(kv_endpoint.contains("http://localhost:8787"));
+        assert!(
+            list_endpoint.contains("accounts/account-id/storage/kv/namespaces/namespace-id/keys")
+        );
+        assert!(list_endpoint.contains("http://localhost:8787"));
+    }
+
+    #[test]
+    fn test_local_remote_switching() {
+        let creds = AuthCredentials::token("test-token");
+        let mut config = ClientConfig::new("account-id", "namespace-id", creds);
+
+        // Start with remote
+        assert!(!config.is_local);
+        assert!(config
+            .base_url()
+            .contains("https://api.cloudflare.com/client/v4"));
+
+        // Switch to local
+        config = config.with_local(true);
+        assert!(config.is_local);
+        assert!(config.base_url().contains("http://localhost:8787"));
+
+        // Switch back to remote
+        config = config.with_local(false);
+        assert!(!config.is_local);
+        assert!(config
+            .base_url()
+            .contains("https://api.cloudflare.com/client/v4"));
     }
 
     #[test]
